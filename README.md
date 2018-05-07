@@ -15,29 +15,33 @@ I do not have a need for a token endpoint like this myself, thus developing one 
 
 1. Download [the latest release](https://github.com/Zegnat/php-mintoken/releases/latest) from GitHub and extract the files.
    
-2. Create an SQLite database by your favourite means, and use `schema.sql` to create the expected tables. This setup assumes the database file is called `tokens.db`.
+2. Create an SQLite database; these instructions assume the database is called `tokens.db`.
    
-   **Tip**: this can be done on the command line:
+   **You can do this from the command line:**
    
    ```bash
    sqlite3 tokens.db < schema.sql
    ```
    
+   If you prefer, create the SQLite database by your favourite means and use `schema.sql` to create the expected tables.
+   
 3. Define trusted authorization endpoints in the `settings` table of the SQLite database. Mintoken will only check codes with these endpoints, and takes the `me` value they return as trusted without further verification.
    
    E.g. if we take [the example setup for Selfauth](https://github.com/Inklings-io/selfauth#setup), the endpoint `https://example.com/auth/` should be whitelisted.
    
-   **Tip**: this can be done on the command line:
+   **From the command line:**
    
    ```bash
    sqlite3 tokens.db 'INSERT INTO settings VALUES ("endpoint", "https://example.com/auth/");'
    ```
    
-4. Upload the SQLite database to a secure directory on your server. Make sure it is not publicly available to the web!
+4. Upload the SQLite database to a secure directory on your server. Make sure it is not publicly available to the web! This is very important for security reasons.
    
 5. Edit `endpoint.php` so line 5 defines the correct path to the SQLite database as the value for `MINTOKEN_SQLITE_PATH`.
    
-6. Put `endpoint.php` anywhere on your server where it is available to the web. (This could be in the same folder as Selfauth.)
+   You should use the full path to `tokens.db`. For example, `define('MINTOKEN_SQLITE_PATH', '../../tokens.db');`
+   
+6. Put `endpoint.php` anywhere on your server where it is available to the web. (This can be in the same folder as Selfauth, for simplicity.)
    
 7. Make the token endpoint discoverable. Either by defining a `Link` HTTP header, or adding the following to the `<head>` of the pages where you also link to your `authorization_endpoint`:
    
@@ -45,7 +49,7 @@ I do not have a need for a token endpoint like this myself, thus developing one 
    <link rel="token_endpoint" href="https://example.com/auth/endpoint.php">
    ```
    
-   (The `href` value in this example must point at your uploaded `endpoint.php` file.)
+   (The `href` must point at your `endpoint.php` file.)
 
 ## License
 
