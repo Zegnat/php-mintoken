@@ -15,7 +15,7 @@ I do not have a need for a token endpoint like this myself, thus developing one 
 
 1. Download [the latest release](https://github.com/Zegnat/php-mintoken/releases/latest) from GitHub and extract the files.
    
-2. Create a database; these instructions assume the database is called `tokens.db`.
+2. Create an SQLite database; these instructions assume the database is called `tokens.db`.
 
 **You can do this from the command line:**
    
@@ -23,7 +23,7 @@ I do not have a need for a token endpoint like this myself, thus developing one 
    sqlite3 tokens.db < schema.sql
    ```
 
-Alternatively, create a SQLite database by your favourite means and use `schema.sql` to create the expected tables.
+   If you prefer, create the SQLite database by your favourite means and use `schema.sql` to create the expected tables.
    
 3. Define trusted authorization endpoints in the `settings` table of the SQLite database. Mintoken will only check codes with these endpoints, and takes the `me` value they return as trusted without further verification.
    
@@ -39,7 +39,7 @@ E.g. if we take [the example setup for Selfauth](https://github.com/Inklings-io/
    
 5. Edit `endpoint.php` so line 5 defines the correct path to the SQLite database as the value for `MINTOKEN_SQLITE_PATH`.
 
-You should use the full path to `tokens.db`. For example, `define('MINTOKEN_SQLITE_PATH', '../../tokens.db');`
+   You should use the full path to `tokens.db`. For example, `define('MINTOKEN_SQLITE_PATH', '../../tokens.db');`
    
 6. Put `endpoint.php` anywhere on your server where it is available to the web. (This can be in the same folder as Selfauth, for simplicity.)
    
