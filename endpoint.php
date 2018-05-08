@@ -182,6 +182,12 @@ function invalidRequest(): void
 $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[!#$%&\'*+.^_`|~0-9a-z-]+$@i']]);
 if ($method === 'GET') {
     $authorization = filter_input(INPUT_SERVER, 'HTTP_AUTHORIZATION', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-z]+$@']]);
+    if ($authorization === null && function_exists('apache_request_headers')) {
+        $headers = array_change_key_case(apache_request_headers(), CASE_LOWER);
+        if (isset($headers['authorization'])) {
+            $authorization = filter_var($headers['authorization'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-z]+$@']]);
+        }
+    }
     if ($authorization === null) {
         header('HTTP/1.1 401 Unauthorized');
         header('WWW-Authenticate: Bearer');
