@@ -40,13 +40,17 @@ function initCurl(string $url)/* : resource */
 function storeToken(string $me, string $client_id, string $scope): string
 {
     $pdo = connectToDatabase();
+    do {
+        $hashable = substr(str_replace(chr(0), '', random_bytes(100)), 0, 72);
+        $hash = password_hash($hashable, PASSWORD_BCRYPT);
+    } while (strlen($hashable) !== 72 || $hash === false);
     for ($i = 0; $i < 10; $i++) {
         $lastException = null;
-        $token = bin2hex(random_bytes(32));
+        $id = bin2hex(random_bytes(32));
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
-        $statement = $pdo->prepare('INSERT INTO tokens (token, me, client_id, scope) VALUES (?, ?, ?, ?)');
+        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, me, client_id, scope) VALUES (?, ?, ?, ?, ?)');
         try {
-            $statement->execute([$token, $me, $client_id, $scope]);
+            $statement->execute([$id, $hash, $me, $client_id, $scope]);
         } catch (PDOException $e) {
             $lastException = $e;
             if ($statement->errorInfo()[1] !== 19) {
@@ -59,22 +63,30 @@ function storeToken(string $me, string $client_id, string $scope): string
     if ($lastException !== null) {
         throw $e;
     }
-    return $token;
+    return $id . '_' . bin2hex($hashable);
 }
 
 function retrieveToken(string $token): ?array
 {
+    list($id, $hashable) = explode('_', $token);
     $pdo = connectToDatabase();
-    $statement = $pdo->prepare('SELECT * FROM tokens WHERE token = ?');
-    $statement->execute([$token]);
-    return $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+    $statement = $pdo->prepare('SELECT * FROM tokens WHERE token_id = ?');
+    $statement->execute([$id]);
+    $token = $statement->fetch(PDO::FETCH_ASSOC);
+    if ($token !== false && password_verify(hex2bin($hashable), $token['token_hash'])) {
+        return $token;
+    }
+    return null;
 }
 
 function revokeToken(string $token): void
 {
-    $pdo = connectToDatabase();
-    $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token = ? AND revoked IS NULL');
-    $statement->execute([$token]);
+    $token = retrieveToken($token);
+    if ($token !== null) {
+        $pdo = connectToDatabase();
+        $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token_id = ? AND revoked IS NULL');
+        $statement->execute([$token['token_id']]);
+    }
 }
 
 function isTrustedEndpoint(string $endpoint): bool
@@ -181,11 +193,11 @@ function invalidRequest(): void
 
 $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[!#$%&\'*+.^_`|~0-9a-z-]+$@i']]);
 if ($method === 'GET') {
-    $authorization = filter_input(INPUT_SERVER, 'HTTP_AUTHORIZATION', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-z]+$@']]);
+    $authorization = filter_input(INPUT_SERVER, 'HTTP_AUTHORIZATION', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-f]+_[0-9a-f]+$@']]);
     if ($authorization === null && function_exists('apache_request_headers')) {
         $headers = array_change_key_case(apache_request_headers(), CASE_LOWER);
         if (isset($headers['authorization'])) {
-            $authorization = filter_var($headers['authorization'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-z]+$@']]);
+            $authorization = filter_var($headers['authorization'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-f]+_[0-9a-f]+$@']]);
         }
     }
     if ($authorization === null) {
@@ -224,7 +236,7 @@ if ($method === 'GET') {
     }
     $revoke = filter_input(INPUT_POST, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^revoke$@']]);
     if (is_string($revoke)) {
-        $token = filter_input(INPUT_POST, 'token', FILTER_UNSAFE_RAW);
+        $token = filter_input(INPUT_POST, 'token', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-f]+_[0-9a-f]+$@']]);
         if (is_string($token)) {
             revokeToken($token);
         }
