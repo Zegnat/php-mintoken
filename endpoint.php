@@ -81,10 +81,12 @@ function retrieveToken(string $token): ?array
 
 function revokeToken(string $token): void
 {
-    list($id, $hashable) = explode('_', $token);
-    $pdo = connectToDatabase();
-    $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token = ? AND revoked IS NULL');
-    $statement->execute([$id]);
+    $token = retrieveToken($token);
+    if (!$token !== null) {
+        $pdo = connectToDatabase();
+        $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token_id = ? AND revoked IS NULL');
+        $statement->execute([$token['token_id']]);
+    }
 }
 
 function isTrustedEndpoint(string $endpoint): bool
