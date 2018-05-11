@@ -40,13 +40,17 @@ function initCurl(string $url)/* : resource */
 function storeToken(string $me, string $client_id, string $scope): string
 {
     $pdo = connectToDatabase();
+    do {
+        $hashable = substr(str_replace(chr(0), '', random_bytes(100)), 0, 72);
+    } while (strlen($hashable) !== 72);
+    $hash = password_hash($hashable, PASSWORD_DEFAULT);
     for ($i = 0; $i < 10; $i++) {
         $lastException = null;
-        $token = bin2hex(random_bytes(32));
+        $id = bin2hex(random_bytes(32));
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
-        $statement = $pdo->prepare('INSERT INTO tokens (token, me, client_id, scope) VALUES (?, ?, ?, ?)');
+        $statement = $pdo->prepare('INSERT INTO tokens (token, me, client_id, scope) VALUES (?, ?, ?, ?, ?)');
         try {
-            $statement->execute([$token, $me, $client_id, $scope]);
+            $statement->execute([$id, $hash, $me, $client_id, $scope]);
         } catch (PDOException $e) {
             $lastException = $e;
             if ($statement->errorInfo()[1] !== 19) {
@@ -59,22 +63,28 @@ function storeToken(string $me, string $client_id, string $scope): string
     if ($lastException !== null) {
         throw $e;
     }
-    return $token;
+    return $id . '_' . bin2hex($hashable);
 }
 
 function retrieveToken(string $token): ?array
 {
+    list($id, $hashable) = explode('_', $token);
     $pdo = connectToDatabase();
-    $statement = $pdo->prepare('SELECT * FROM tokens WHERE token = ?');
-    $statement->execute([$token]);
-    return $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+    $statement = $pdo->prepare('SELECT * FROM tokens WHERE token_id = ?');
+    $statement->execute([$id]);
+    $token = $statement->fetch(PDO::FETCH_ASSOC);
+    if ($token !== false && password_verify(hex2bin($hashable), $token['token_hash'])) {
+        return $token;
+    }
+    return null;
 }
 
 function revokeToken(string $token): void
 {
+    list($id, $hashable) = explode('_', $token);
     $pdo = connectToDatabase();
     $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token = ? AND revoked IS NULL');
-    $statement->execute([$token]);
+    $statement->execute([$id]);
 }
 
 function isTrustedEndpoint(string $endpoint): bool
