@@ -193,11 +193,11 @@ function invalidRequest(): void
 
 $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[!#$%&\'*+.^_`|~0-9a-z-]+$@i']]);
 if ($method === 'GET') {
-    $authorization = filter_input(INPUT_SERVER, 'HTTP_AUTHORIZATION', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-z]+_[0-9a-z]+$@']]);
+    $authorization = filter_input(INPUT_SERVER, 'HTTP_AUTHORIZATION', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-f]+_[0-9a-f]+$@']]);
     if ($authorization === null && function_exists('apache_request_headers')) {
         $headers = array_change_key_case(apache_request_headers(), CASE_LOWER);
         if (isset($headers['authorization'])) {
-            $authorization = filter_var($headers['authorization'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-z]+_[0-9a-z]+$@']]);
+            $authorization = filter_var($headers['authorization'], FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^Bearer [0-9a-f]+_[0-9a-f]+$@']]);
         }
     }
     if ($authorization === null) {
@@ -236,7 +236,7 @@ if ($method === 'GET') {
     }
     $revoke = filter_input(INPUT_POST, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^revoke$@']]);
     if (is_string($revoke)) {
-        $token = filter_input(INPUT_POST, 'token', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-z]+_[0-9a-z]+$@']])
+        $token = filter_input(INPUT_POST, 'token', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-f]+_[0-9a-f]+$@']])
         if (is_string($token)) {
             revokeToken($token);
         }
