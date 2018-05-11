@@ -42,8 +42,8 @@ function storeToken(string $me, string $client_id, string $scope): string
     $pdo = connectToDatabase();
     do {
         $hashable = substr(str_replace(chr(0), '', random_bytes(100)), 0, 72);
-    } while (strlen($hashable) !== 72);
-    $hash = password_hash($hashable, PASSWORD_DEFAULT);
+        $hash = password_hash($hashable, PASSWORD_BCRYPT);
+    } while (strlen($hashable) !== 72 || $hash === false);
     for ($i = 0; $i < 10; $i++) {
         $lastException = null;
         $id = bin2hex(random_bytes(32));
