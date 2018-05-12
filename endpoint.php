@@ -48,7 +48,7 @@ function storeToken(string $me, string $client_id, string $scope): string
         $lastException = null;
         $id = bin2hex(random_bytes(32));
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
-        $statement = $pdo->prepare('INSERT INTO tokens (token, me, client_id, scope) VALUES (?, ?, ?, ?, ?)');
+        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, me, client_id, scope) VALUES (?, ?, ?, ?, ?)');
         try {
             $statement->execute([$id, $hash, $me, $client_id, $scope]);
         } catch (PDOException $e) {
@@ -236,7 +236,7 @@ if ($method === 'GET') {
     }
     $revoke = filter_input(INPUT_POST, 'action', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^revoke$@']]);
     if (is_string($revoke)) {
-        $token = filter_input(INPUT_POST, 'token', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-f]+_[0-9a-f]+$@']])
+        $token = filter_input(INPUT_POST, 'token', FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '@^[0-9a-f]+_[0-9a-f]+$@']]);
         if (is_string($token)) {
             revokeToken($token);
         }
