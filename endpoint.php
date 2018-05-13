@@ -48,7 +48,7 @@ function storeToken(string $me, string $client_id, string $scope): string
         $lastException = null;
         $id = bin2hex(random_bytes(32));
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
-        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, me, client_id, scope) VALUES (?, ?, ?, ?, ?)');
+        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, auth_me, auth_client_id, auth_scope) VALUES (?, ?, ?, ?, ?)');
         try {
             $statement->execute([$id, $hash, $me, $client_id, $scope]);
         } catch (PDOException $e) {
