@@ -48,7 +48,7 @@ function storeToken(string $me, string $client_id, string $scope): string
         $lastException = null;
         $id = bin2hex(random_bytes(32));
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
-        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, me, client_id, scope) VALUES (?, ?, ?, ?, ?)');
+        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, auth_me, auth_client_id, auth_scope) VALUES (?, ?, ?, ?, ?)');
         try {
             $statement->execute([$id, $hash, $me, $client_id, $scope]);
         } catch (PDOException $e) {
@@ -92,7 +92,7 @@ function revokeToken(string $token): void
 function isTrustedEndpoint(string $endpoint): bool
 {
     $pdo = connectToDatabase();
-    $statement = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE name = ? AND value = ?');
+    $statement = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE setting_name = ? AND setting_value = ?');
     $statement->execute(['endpoint', $endpoint]);
     return $statement->fetchColumn() > 0;
 }
@@ -222,9 +222,9 @@ if ($method === 'GET') {
             header('HTTP/1.1 200 OK');
             header('Content-Type: application/json;charset=UTF-8');
             exit(json_encode([
-                'me' => $token['me'],
-                'client_id' => $token['client_id'],
-                'scope' => $token['scope'],
+                'me' => $token['auth_me'],
+                'client_id' => $token['auth_client_id'],
+                'scope' => $token['auth_scope'],
             ]));
         }
     }

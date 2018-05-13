@@ -1,17 +1,14 @@
-BEGIN TRANSACTION;
-CREATE TABLE `tokens` (
-	`token_id`	TEXT NOT NULL UNIQUE,
-	`token_hash`	TEXT NOT NULL,
-	`me`	TEXT NOT NULL,
-	`client_id`	TEXT NOT NULL,
-	`scope`	TEXT NOT NULL,
-	`created`	TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`revoked`	TEXT DEFAULT NULL,
-	PRIMARY KEY(`token_id`)
+CREATE TABLE tokens (
+    token_id       CHAR(64)                               NOT NULL PRIMARY KEY,
+    token_hash     VARCHAR(255)                           NOT NULL,
+    auth_me        VARCHAR(255)                           NOT NULL,
+    auth_client_id VARCHAR(255)                           NOT NULL,
+    auth_scope     VARCHAR(255)                           NOT NULL,
+    created        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    revoked        TIMESTAMP    DEFAULT NULL
 );
-CREATE TABLE `settings` (
-	`name`	TEXT NOT NULL,
-	`value`	TEXT NOT NULL,
-	CONSTRAINT `setting` UNIQUE(`name`,`value`)
+CREATE TABLE settings (
+    setting_name   VARCHAR(255) NOT NULL,
+    setting_value  VARCHAR(255) NOT NULL,
+    CONSTRAINT setting UNIQUE (setting_name, setting_value)
 );
-COMMIT;
