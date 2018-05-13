@@ -1,16 +1,16 @@
 CREATE TABLE tokens (
-    token_id   TEXT NOT NULL UNIQUE,
-    token_hash TEXT NOT NULL,
-    me         TEXT NOT NULL,
-    client_id  TEXT NOT NULL,
-    scope      TEXT NOT NULL,
-    created    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    revoked    TEXT DEFAULT NULL,
+    token_id   CHARACTER(64)          NOT NULL UNIQUE,
+    token_hash CHARACTER VARYING(255) NOT NULL,
+    me         CHARACTER VARYING(255) NOT NULL,
+    client_id  CHARACTER VARYING(255) NOT NULL,
+    scope      CHARACTER VARYING(255) NOT NULL,
+    created    TIMESTAMP              NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revoked    TIMESTAMP                       DEFAULT NULL,
     PRIMARY KEY(token_id)
 );
 CREATE TABLE settings (
-    name  TEXT NOT NULL,
-    value TEXT NOT NULL,
-    CONSTRAINT setting UNIQUE(name, value)
+    name  CHARACTER VARYING(255) NOT NULL,
+    value CHARACTER VARYING(255) NOT NULL,
+          CONSTRAINT setting UNIQUE(name, value)
 );
 COMMIT;
