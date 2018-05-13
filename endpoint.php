@@ -92,7 +92,7 @@ function revokeToken(string $token): void
 function isTrustedEndpoint(string $endpoint): bool
 {
     $pdo = connectToDatabase();
-    $statement = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE name = ? AND value = ?');
+    $statement = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE setting_name = ? AND setting_value = ?');
     $statement->execute(['endpoint', $endpoint]);
     return $statement->fetchColumn() > 0;
 }
@@ -222,9 +222,9 @@ if ($method === 'GET') {
             header('HTTP/1.1 200 OK');
             header('Content-Type: application/json;charset=UTF-8');
             exit(json_encode([
-                'me' => $token['me'],
-                'client_id' => $token['client_id'],
-                'scope' => $token['scope'],
+                'me' => $token['auth_me'],
+                'client_id' => $token['auth_client_id'],
+                'scope' => $token['auth_scope'],
             ]));
         }
     }
