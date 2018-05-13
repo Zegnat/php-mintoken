@@ -1,4 +1,3 @@
-BEGIN TRANSACTION;
 CREATE TABLE `tokens` (
 	`token_id`	TEXT NOT NULL UNIQUE,
 	`token_hash`	TEXT NOT NULL,
