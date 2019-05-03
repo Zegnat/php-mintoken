@@ -5,6 +5,7 @@ CREATE TABLE tokens (
     auth_client_id VARCHAR(255)                           NOT NULL,
     auth_scope     VARCHAR(255)                           NOT NULL,
     created        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    last_use       TIMESTAMP    DEFAULT NULL,
     revoked        TIMESTAMP    DEFAULT NULL
 );
 CREATE TABLE settings (
