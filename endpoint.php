@@ -88,6 +88,13 @@ function retrieveToken(string $token): ?array
     return null;
 }
 
+function markTokenUsed(string $tokenId): void
+{
+    $pdo = connectToDatabase();
+    $statement = $pdo->prepare('UPDATE tokens SET last_use = CURRENT_TIMESTAMP WHERE token_id = ? AND (last_use IS NULL OR last_use < CURRENT_TIMESTAMP)');
+    $statement->execute([$tokenId]);
+}
+
 function revokeToken(string $token): void
 {
     $token = retrieveToken($token);
@@ -232,6 +239,7 @@ if ($method === 'GET') {
         } else {
             header('HTTP/1.1 200 OK');
             header('Content-Type: application/json;charset=UTF-8');
+            markTokenUsed($token['token_id']);
             exit(json_encode([
                 'me' => $token['auth_me'],
                 'client_id' => $token['auth_client_id'],
