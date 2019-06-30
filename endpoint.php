@@ -262,19 +262,23 @@ if ($method === 'GET') {
         header('HTTP/1.1 200 OK');
         exit();
     }
-    $request = filter_input_array(INPUT_POST, [
-        'grant_type' => [
-            'filter' => FILTER_VALIDATE_REGEXP,
-            'options' => ['regexp' => '@^authorization_code$@'],
-        ],
-        'code' => [
-            'filter' => FILTER_VALIDATE_REGEXP,
-            'options' => ['regexp' => '@^[\x20-\x7E]+$@'],
-        ],
-        'client_id' => FILTER_VALIDATE_URL,
-        'redirect_uri' => FILTER_VALIDATE_URL,
-        'me' => FILTER_VALIDATE_URL,
-    ]);
+    $request = array_merge(
+        filter_input_array(INPUT_POST, [
+            'grant_type' => [
+                'filter' => FILTER_VALIDATE_REGEXP,
+                'options' => ['regexp' => '@^authorization_code$@'],
+            ],
+            'code' => [
+                'filter' => FILTER_VALIDATE_REGEXP,
+                'options' => ['regexp' => '@^[\x20-\x7E]+$@'],
+            ],
+            'client_id' => FILTER_VALIDATE_URL,
+            'redirect_uri' => FILTER_VALIDATE_URL,
+        ]),
+        filter_input_array(INPUT_GET, [
+            'me' => FILTER_VALIDATE_URL,
+        ])
+    );
     if (in_array(null, $request, true) || in_array(false, $request, true)) {
         invalidRequest();
     }
