@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 define('MINTOKEN_SQLITE_PATH', '');
 define('MINTOKEN_CURL_TIMEOUT', 4);
+define('MINTOKEN_REVOKE_AFTER', '7 days');
 
 if (!file_exists(MINTOKEN_SQLITE_PATH)) {
     header('HTTP/1.1 500 Internal Server Error');
@@ -47,10 +48,18 @@ function storeToken(string $me, string $client_id, string $scope): string
     for ($i = 0; $i < 10; $i++) {
         $lastException = null;
         $id = bin2hex(random_bytes(32));
+        $revokeColumn = '';
+        $revokeValue = '';
+        $revoking = [];
+        if (is_string(MINTOKEN_REVOKE_AFTER) && strlen(MINTOKEN_REVOKE_AFTER) > 0) {
+            $revokeColumn = ', revoked';
+            $revokeValue = ', datetime(CURRENT_TIMESTAMP, ?)';
+            $revoking = ['+' . MINTOKEN_REVOKE_AFTER];
+        }
         // We have to prepare inside the loop, https://github.com/teamtnt/tntsearch/pull/126
-        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, auth_me, auth_client_id, auth_scope) VALUES (?, ?, ?, ?, ?)');
+        $statement = $pdo->prepare('INSERT INTO tokens (token_id, token_hash, auth_me, auth_client_id, auth_scope' . $revokeColumn . ') VALUES (?, ?, ?, ?, ?' . $revokeValue . ')');
         try {
-            $statement->execute([$id, $hash, $me, $client_id, $scope]);
+            $statement->execute(array_merge([$id, $hash, $me, $client_id, $scope], $revoking));
         } catch (PDOException $e) {
             $lastException = $e;
             if ($statement->errorInfo()[1] !== 19) {
@@ -70,7 +79,7 @@ function retrieveToken(string $token): ?array
 {
     list($id, $hashable) = explode('_', $token);
     $pdo = connectToDatabase();
-    $statement = $pdo->prepare('SELECT * FROM tokens WHERE token_id = ?');
+    $statement = $pdo->prepare('SELECT *, revoked > CURRENT_TIMESTAMP AS active FROM tokens WHERE token_id = ?');
     $statement->execute([$id]);
     $token = $statement->fetch(PDO::FETCH_ASSOC);
     if ($token !== false && password_verify(hex2bin($hashable), $token['token_hash'])) {
@@ -84,7 +93,7 @@ function revokeToken(string $token): void
     $token = retrieveToken($token);
     if ($token !== null) {
         $pdo = connectToDatabase();
-        $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token_id = ? AND revoked IS NULL');
+        $statement = $pdo->prepare('UPDATE tokens SET revoked = CURRENT_TIMESTAMP WHERE token_id = ? AND (revoked IS NULL OR revoked > CURRENT_TIMESTAMP)');
         $statement->execute([$token['token_id']]);
     }
 }
@@ -216,7 +225,7 @@ if ($method === 'GET') {
             header('HTTP/1.1 401 Unauthorized');
             header('WWW-Authenticate: Bearer, error="invalid_token", error_description="The access token is unknown"');
             exit();
-        } elseif ($token['revoked'] !== null) {
+        } elseif ($token['active'] === '0') {
             header('HTTP/1.1 401 Unauthorized');
             header('WWW-Authenticate: Bearer, error="invalid_token", error_description="The access token is revoked"');
             exit();
