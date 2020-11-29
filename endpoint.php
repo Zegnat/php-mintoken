@@ -105,68 +105,12 @@ function revokeToken(string $token): void
     }
 }
 
-function isTrustedEndpoint(string $endpoint): bool
+function getTrustedEndpoint(): string
 {
     $pdo = connectToDatabase();
-    $statement = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE setting_name = ? AND setting_value = ?');
-    $statement->execute(['endpoint', $endpoint]);
-    return $statement->fetchColumn() > 0;
-}
-
-function discoverAuthorizationEndpoint(string $url): ?string
-{
-    $curl = initCurl($url);
-    $headers = [];
-    $last = '';
-    curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($curl, $header) use (&$headers, &$last): int {
-        $url = curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
-        if ($url !== $last) {
-            $headers = [];
-        }
-        $len = strlen($header);
-        $header = explode(':', $header, 2);
-        if (count($header) === 2) {
-            $name = strtolower(trim($header[0]));
-            if (!array_key_exists($name, $headers)) {
-                $headers[$name] = [trim($header[1])];
-            } else {
-                $headers[$name][] = trim($header[1]);
-            }
-        }
-        $last = $url;
-        return $len;
-    });
-    $body = curl_exec($curl);
-    if (curl_getinfo($curl, CURLINFO_HTTP_CODE) !== 200 || curl_errno($curl) !== 0) {
-        return null;
-    }
-    curl_close($curl);
-    $endpoint = null;
-    if (array_key_exists('link', $headers)) {
-        foreach ($headers['link'] as $link) {
-            $found = preg_match('@^\s*<([^>]*)>\s*;(.*?;)?\srel="([^"]*?\s+)?authorization_endpoint(\s+[^"]*?)?"@', $link, $match);
-            if ($found === 1) {
-                $endpoint = $match[1];
-                break;
-            }
-        }
-    }
-    if ($endpoint === null) {
-        libxml_use_internal_errors(true);
-        $dom = new DOMDocument();
-        $dom->loadHTML(mb_convert_encoding($body, 'HTML-ENTITIES', 'UTF-8'));
-        $xpath = new DOMXPath($dom);
-        $nodes = $xpath->query('//*[contains(concat(" ", normalize-space(@rel), " "), " authorization_endpoint ") and @href][1]/@href');
-        if ($nodes->length === 0) {
-            return null;
-        }
-        $endpoint = $nodes->item(0)->value;
-        $bases = $xpath->query('//base[@href][1]/@href');
-        if ($bases->length !== 0) {
-            $last = resolveUrl($last, $bases->item(0)->value);
-        }
-    }
-    return resolveUrl($last, $endpoint);
+    $statement = $pdo->prepare('SELECT setting_value FROM settings WHERE setting_name = ? LIMIT 1');
+    $statement->execute(['endpoint']);
+    return $statement->fetchColumn();
 }
 
 function verifyCode(string $code, string $client_id, string $redirect_uri, string $endpoint): ?array
@@ -262,30 +206,22 @@ if ($method === 'GET') {
         header('HTTP/1.1 200 OK');
         exit();
     }
-    $request = array_merge(
-        filter_input_array(INPUT_POST, [
-            'grant_type' => [
-                'filter' => FILTER_VALIDATE_REGEXP,
-                'options' => ['regexp' => '@^authorization_code$@'],
-            ],
-            'code' => [
-                'filter' => FILTER_VALIDATE_REGEXP,
-                'options' => ['regexp' => '@^[\x20-\x7E]+$@'],
-            ],
-            'client_id' => FILTER_VALIDATE_URL,
-            'redirect_uri' => FILTER_VALIDATE_URL,
-        ]),
-        filter_input_array(INPUT_GET, [
-            'me' => FILTER_VALIDATE_URL,
-        ])
-    );
+    $request = filter_input_array(INPUT_POST, [
+        'grant_type' => [
+            'filter' => FILTER_VALIDATE_REGEXP,
+            'options' => ['regexp' => '@^authorization_code$@'],
+        ],
+        'code' => [
+            'filter' => FILTER_VALIDATE_REGEXP,
+            'options' => ['regexp' => '@^[\x20-\x7E]+$@'],
+        ],
+        'client_id' => FILTER_VALIDATE_URL,
+        'redirect_uri' => FILTER_VALIDATE_URL,
+    ]);
     if (in_array(null, $request, true) || in_array(false, $request, true)) {
         invalidRequest();
     }
-    $endpoint = discoverAuthorizationEndpoint($request['me']);
-    if ($endpoint === null || !isTrustedEndpoint($endpoint)) {
-        invalidRequest();
-    }
+    $endpoint = getTrustedEndpoint();
     $info = verifyCode($request['code'], $request['client_id'], $request['redirect_uri'], $endpoint);
     if ($info === null) {
         invalidRequest();
